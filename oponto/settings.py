@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-(cdmj=dwyk83gyn&iw33n_(0aobg82owykhgjiehyn9(ixql0a
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.1.178', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['192.168.1.178']
 
 
 # Application definition
@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'registro',
+    'sslserver',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -59,10 +61,14 @@ ROOT_URLCONF = 'oponto.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'DIRS': [
+            os.path.join(BASE_DIR, 'templates'),
+            os.path.join(BASE_DIR, 'templates/registro'),
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -126,3 +132,7 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_REDIRECT_URL = '/'       # Para onde redirecionar após login
+LOGIN_URL = '/accounts/login/' # URL de login
+LOGOUT_REDIRECT_URL = '/accounts/login/'  # Para onde redirecionar após logout
