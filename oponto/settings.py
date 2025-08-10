@@ -1,3 +1,31 @@
+from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Atualize ALLOWED_HOSTS
+ALLOWED_HOSTS = ['192.168.1.230', 'localhost', '127.0.0.1']
+
+# Adicione o app registro
+INSTALLED_APPS = [
+    ...,
+    'registro',
+]
+
+# Configuração de templates
+TEMPLATES = [
+    {
+        ...
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        ...
+    },
+]
+
+# Configuração de arquivos estáticos
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
 """
 Django settings for oponto project.
 
