@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <!-- Ícones Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Flatpickr para seleção de datas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
         body {
             background-color: #f8f9fa;
@@ -78,7 +80,7 @@
             vertical-align: middle;
             margin-right: 5px;
         }
-            .btn-history {
+        .btn-history {
             background: linear-gradient(135deg, #6c757d, #495057);
             color: white;
             font-weight: 500;
@@ -94,6 +96,32 @@
         }
         .date-picker {
             max-width: 200px;
+        }
+        .history-day-group {
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .history-day-header {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+        }
+        .history-day-content {
+            background-color: white;
+        }
+        .no-records {
+            padding: 15px;
+            text-align: center;
+            color: #6c757d;
+        }
+        .filter-container {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -164,10 +192,14 @@
             </div>
 
             <div class="card-footer text-muted text-center">
+                <button id="historyBtn" class="btn btn-history btn-sm" data-bs-toggle="modal" data-bs-target="#historyModal">
+                    <i class="fas fa-calendar-alt me-1"></i> Ver Histórico
+                </button>
                 <small>Sistema Oponto © 2025 - Todos os direitos reservados</small>
             </div>
         </div>
     </div>
+    
 
     <!-- Modal de Confirmação -->
     <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
@@ -201,16 +233,68 @@
         </div>
     </div>
 
+    <!-- Modal de Histórico -->
+    <div class="modal fade history-modal" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="historyModalLabel">
+                        <i class="fas fa-history me-2"></i>Histórico de Pontos
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Filtros -->
+                    <div class="filter-container mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label for="startDate" class="form-label">Data Inicial</label>
+                                <input type="date" class="form-control date-picker" id="startDate">
+                            </div>
+                            <div class="col-md-5">
+                                <label for="endDate" class="form-label">Data Final</label>
+                                <input type="date" class="form-control date-picker" id="endDate">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button id="filterBtn" class="btn btn-primary w-100">
+                                    <i class="fas fa-filter me-1"></i> Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Conteúdo do histórico -->
+                    <div id="historyContent">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                            <p class="mt-2">Carregando histórico...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Flatpickr localization -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
     
     <script>
         // Variáveis globais
         let currentPosition = null;
         let map = null;
         let confirmModal = null;
+        let historyModal = null;
         
         // Configuração dos tipos de ponto
         const pointTypes = {
@@ -252,6 +336,19 @@
                 }
             }
             return cookieValue;
+        }
+
+        // Função para formatar data
+        function formatDate(dateString) {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR', options);
+        }
+
+        // Função para formatar hora
+        function formatTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
         }
 
         // Função para carregar registros do dia
@@ -331,6 +428,115 @@
                 });
         }
 
+        // Função para carregar histórico
+        function loadHistory(startDate = null, endDate = null) {
+            const historyContent = document.getElementById('historyContent');
+            historyContent.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Carregando histórico...</p>
+                </div>
+            `;
+            
+            let url = '/historico-pontos/';
+            const params = new URLSearchParams();
+            
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            
+            if (params.toString()) {
+                url += `?${params.toString()}`;
+            }
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao buscar histórico');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success || !data.data || data.data.length === 0) {
+                        historyContent.innerHTML = `
+                            <div class="no-records">
+                                <i class="fas fa-calendar-times fa-2x mb-3"></i>
+                                <p>Nenhum registro encontrado no período selecionado</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Agrupa registros por dia
+                    const groupedByDay = {};
+                    data.data.forEach(record => {
+                        const date = record.data_hora.split('T')[0];
+                        if (!groupedByDay[date]) {
+                            groupedByDay[date] = [];
+                        }
+                        groupedByDay[date].push(record);
+                    });
+                    
+                    // Ordena as datas (mais recente primeiro)
+                    const sortedDates = Object.keys(groupedByDay).sort().reverse();
+                    
+                    // Monta o HTML
+                    let html = '';
+                    sortedDates.forEach(date => {
+                        const records = groupedByDay[date];
+                        
+                        html += `
+                            <div class="history-day-group">
+                                <div class="history-day-header">
+                                    ${formatDate(date)}
+                                    <span class="badge bg-primary ms-2">${records.length} registro${records.length > 1 ? 's' : ''}</span>
+                                </div>
+                                <div class="history-day-content">
+                        `;
+                        
+                        records.forEach(record => {
+                            const pointType = pointTypes[record.tipo] || pointTypes.entrada;
+                            
+                            html += `
+                                <div class="point-entry p-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <span class="point-type ${pointType.class} me-2">
+                                                <i class="fas fa-${pointType.icon} me-1"></i>
+                                                ${pointType.label}
+                                            </span>
+                                            <span class="text-muted">
+                                                ${formatTime(record.data_hora)}
+                                            </span>
+                                        </div>
+                                        <small class="text-muted text-truncate" style="max-width: 200px;">
+                                            ${record.endereco || 'Sem endereço'}
+                                        </small>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += `
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    historyContent.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar histórico:', error);
+                    historyContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${error.message || 'Erro ao carregar histórico'}
+                        </div>
+                    `;
+                });
+        }
+
         // Função para registrar ponto
         function registerPoint(pointType) {
             const registerBtn = document.getElementById('registerBtn');
@@ -386,8 +592,42 @@
 
         // Inicialização quando o DOM estiver pronto
         document.addEventListener('DOMContentLoaded', function() {
-            // Inicializa o modal
+            // Inicializa os modais
             confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
+            
+            // Configura os date pickers
+            flatpickr("#startDate", {
+                dateFormat: "Y-m-d",
+                locale: "pt",
+                defaultDate: new Date(),
+                maxDate: new Date()
+            });
+            
+            flatpickr("#endDate", {
+                dateFormat: "Y-m-d",
+                locale: "pt",
+                defaultDate: new Date(),
+                maxDate: new Date()
+            });
+            
+            // Configura o botão de filtro
+            document.getElementById('filterBtn').addEventListener('click', function() {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                
+                if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+                    showAlert('A data inicial não pode ser maior que a data final', 'warning');
+                    return;
+                }
+                
+                loadHistory(startDate, endDate);
+            });
+            
+            // Carrega o histórico quando o modal é aberto
+            document.getElementById('historyModal').addEventListener('shown.bs.modal', function() {
+                loadHistory();
+            });
             
             // Inicializa o mapa
             map = L.map('map').setView([-15.788, -47.879], 4);
